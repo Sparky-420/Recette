@@ -45,6 +45,87 @@ import com.longanizacontrol.mx.util.formatCurrency
 import com.longanizacontrol.mx.util.formatKg
 import com.longanizacontrol.mx.util.toDoubleOrZero
 
+private data class RecipeInput(
+    val garlicGramsPerKg: String,
+    val guajilloGramsPerKg: String,
+    val paprikaGramsPerKg: String,
+    val spicesGramsPerKg: String,
+    val waterMlPerKg: String,
+    val premixDoseGramsPerKgMeat: String,
+    val premixSaltPercent: String,
+    val premixSugarPercent: String,
+    val premixCuringSaltPercent: String
+) {
+    companion object {
+        fun fromRecipe(recipe: RecipeConfig): RecipeInput = RecipeInput(
+            garlicGramsPerKg = recipe.garlicGramsPerKg.toString(),
+            guajilloGramsPerKg = recipe.guajilloGramsPerKg.toString(),
+            paprikaGramsPerKg = recipe.paprikaGramsPerKg.toString(),
+            spicesGramsPerKg = recipe.spicesGramsPerKg.toString(),
+            waterMlPerKg = recipe.waterMlPerKg.toString(),
+            premixDoseGramsPerKgMeat = recipe.premix.doseGramsPerKgMeat.toString(),
+            premixSaltPercent = recipe.premix.saltPercent.toString(),
+            premixSugarPercent = recipe.premix.sugarPercent.toString(),
+            premixCuringSaltPercent = recipe.premix.curingSaltPercent.toString()
+        )
+    }
+}
+
+private data class PriceInput(
+    val meatPerKg: String,
+    val saltPerKg: String,
+    val curingSaltPerKg: String,
+    val sugarPerKg: String,
+    val garlicPerKg: String,
+    val guajilloPerKg: String,
+    val paprikaPerKg: String,
+    val spicesPerKg: String,
+    val waterPerLiter: String,
+    val salePricePerKg: String
+) {
+    companion object {
+        fun fromPrices(prices: PriceConfig): PriceInput = PriceInput(
+            meatPerKg = prices.meatPerKg.toString(),
+            saltPerKg = prices.saltPerKg.toString(),
+            curingSaltPerKg = prices.curingSaltPerKg.toString(),
+            sugarPerKg = prices.sugarPerKg.toString(),
+            garlicPerKg = prices.garlicPerKg.toString(),
+            guajilloPerKg = prices.guajilloPerKg.toString(),
+            paprikaPerKg = prices.paprikaPerKg.toString(),
+            spicesPerKg = prices.spicesPerKg.toString(),
+            waterPerLiter = prices.waterPerLiter.toString(),
+            salePricePerKg = prices.salePricePerKg.toString()
+        )
+    }
+}
+
+private fun RecipeInput.toRecipeConfig(): RecipeConfig = RecipeConfig(
+    garlicGramsPerKg = toDoubleOrZero(garlicGramsPerKg),
+    guajilloGramsPerKg = toDoubleOrZero(guajilloGramsPerKg),
+    paprikaGramsPerKg = toDoubleOrZero(paprikaGramsPerKg),
+    spicesGramsPerKg = toDoubleOrZero(spicesGramsPerKg),
+    waterMlPerKg = toDoubleOrZero(waterMlPerKg),
+    premix = RecipeConfig().premix.copy(
+        doseGramsPerKgMeat = toDoubleOrZero(premixDoseGramsPerKgMeat),
+        saltPercent = toDoubleOrZero(premixSaltPercent),
+        sugarPercent = toDoubleOrZero(premixSugarPercent),
+        curingSaltPercent = toDoubleOrZero(premixCuringSaltPercent)
+    )
+)
+
+private fun PriceInput.toPriceConfig(): PriceConfig = PriceConfig(
+    meatPerKg = toDoubleOrZero(meatPerKg),
+    saltPerKg = toDoubleOrZero(saltPerKg),
+    curingSaltPerKg = toDoubleOrZero(curingSaltPerKg),
+    sugarPerKg = toDoubleOrZero(sugarPerKg),
+    garlicPerKg = toDoubleOrZero(garlicPerKg),
+    guajilloPerKg = toDoubleOrZero(guajilloPerKg),
+    paprikaPerKg = toDoubleOrZero(paprikaPerKg),
+    spicesPerKg = toDoubleOrZero(spicesPerKg),
+    waterPerLiter = toDoubleOrZero(waterPerLiter),
+    salePricePerKg = toDoubleOrZero(salePricePerKg)
+)
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,8 +143,12 @@ fun LonganizaControlApp() {
     val storage = remember { BatchStorage(context) }
 
     var meatInput by remember { mutableStateOf("30") }
-    var recipe by remember { mutableStateOf(RecipeConfig()) }
-    var prices by remember { mutableStateOf(PriceConfig()) }
+    val baseRecipe = remember { RecipeConfig() }
+    val basePrices = remember { PriceConfig() }
+    var recipeInput by remember { mutableStateOf(RecipeInput.fromRecipe(baseRecipe)) }
+    var priceInput by remember { mutableStateOf(PriceInput.fromPrices(basePrices)) }
+    var recipe by remember { mutableStateOf(baseRecipe) }
+    var prices by remember { mutableStateOf(basePrices) }
     var result by remember { mutableStateOf<BatchResult?>(null) }
     var note by remember { mutableStateOf("") }
     val history = remember { mutableStateListOf<BatchRecord>().apply { addAll(storage.loadRecords()) } }
@@ -84,6 +169,8 @@ fun LonganizaControlApp() {
         when (selectedTab) {
             0 -> MainScreen(Modifier.padding(p), meatInput, { meatInput = it }, result, {
                 val kg = toDoubleOrZero(meatInput)
+                recipe = recipeInput.toRecipeConfig()
+                prices = priceInput.toPriceConfig()
                 if (kg > 0) result = Calculator.calculateBatch(kg, recipe, prices)
             }, note, { note = it }, {
                 result?.let {
@@ -92,8 +179,8 @@ fun LonganizaControlApp() {
                     note = ""
                 }
             })
-            1 -> RecipeScreen(Modifier.padding(p), recipe) { recipe = it }
-            2 -> CostScreen(Modifier.padding(p), prices) { prices = it }
+            1 -> RecipeScreen(Modifier.padding(p), recipeInput) { recipeInput = it }
+            2 -> CostScreen(Modifier.padding(p), priceInput) { priceInput = it }
             3 -> ChecklistScreen(Modifier.padding(p), checklist, checked)
             else -> HistoryScreen(Modifier.padding(p), history)
         }
@@ -120,22 +207,22 @@ fun MainScreen(modifier: Modifier, meatInput: String, onMeatChange: (String) -> 
 }
 
 @Composable
-fun RecipeScreen(modifier: Modifier, recipe: RecipeConfig, onChange: (RecipeConfig) -> Unit) {
+fun RecipeScreen(modifier: Modifier, recipe: RecipeInput, onChange: (RecipeInput) -> Unit) {
     Column(modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Field("Ajo g/kg", recipe.garlicGramsPerKg) { onChange(recipe.copy(garlicGramsPerKg = it)) }
         Field("Guajillo g/kg", recipe.guajilloGramsPerKg) { onChange(recipe.copy(guajilloGramsPerKg = it)) }
         Field("Pimentón g/kg", recipe.paprikaGramsPerKg) { onChange(recipe.copy(paprikaGramsPerKg = it)) }
         Field("Especias g/kg", recipe.spicesGramsPerKg) { onChange(recipe.copy(spicesGramsPerKg = it)) }
         Field("Agua ml/kg", recipe.waterMlPerKg) { onChange(recipe.copy(waterMlPerKg = it)) }
-        Field("Dosis premix g/kg", recipe.premix.doseGramsPerKgMeat) { onChange(recipe.copy(premix = recipe.premix.copy(doseGramsPerKgMeat = it))) }
-        Field("% Sal", recipe.premix.saltPercent) { onChange(recipe.copy(premix = recipe.premix.copy(saltPercent = it))) }
-        Field("% Azúcar", recipe.premix.sugarPercent) { onChange(recipe.copy(premix = recipe.premix.copy(sugarPercent = it))) }
-        Field("% Sal cura", recipe.premix.curingSaltPercent) { onChange(recipe.copy(premix = recipe.premix.copy(curingSaltPercent = it))) }
+        Field("Dosis premix g/kg", recipe.premixDoseGramsPerKgMeat) { onChange(recipe.copy(premixDoseGramsPerKgMeat = it)) }
+        Field("% Sal", recipe.premixSaltPercent) { onChange(recipe.copy(premixSaltPercent = it)) }
+        Field("% Azúcar", recipe.premixSugarPercent) { onChange(recipe.copy(premixSugarPercent = it)) }
+        Field("% Sal cura", recipe.premixCuringSaltPercent) { onChange(recipe.copy(premixCuringSaltPercent = it)) }
     }
 }
 
 @Composable
-fun CostScreen(modifier: Modifier, prices: PriceConfig, onChange: (PriceConfig) -> Unit) {
+fun CostScreen(modifier: Modifier, prices: PriceInput, onChange: (PriceInput) -> Unit) {
     Column(modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Field("Carne $/kg", prices.meatPerKg) { onChange(prices.copy(meatPerKg = it)) }
         Field("Sal $/kg", prices.saltPerKg) { onChange(prices.copy(saltPerKg = it)) }
@@ -183,7 +270,6 @@ fun HistoryScreen(modifier: Modifier, history: List<BatchRecord>) {
 }
 
 @Composable
-fun Field(label: String, modelValue: Double, onChange: (Double) -> Unit) {
-    var text by remember(modelValue) { mutableStateOf(modelValue.toString()) }
-    DecimalInputField(text, { text = it; onChange(toDoubleOrZero(it)) }, label, Modifier.fillMaxWidth())
+fun Field(label: String, value: String, onChange: (String) -> Unit) {
+    DecimalInputField(value, onChange, label, Modifier.fillMaxWidth())
 }
