@@ -43,6 +43,7 @@ import com.longanizacontrol.mx.ui.theme.AppTheme
 import com.longanizacontrol.mx.util.Calculator
 import com.longanizacontrol.mx.util.formatCurrency
 import com.longanizacontrol.mx.util.formatKg
+import com.longanizacontrol.mx.util.parseDecimalOrNull
 import com.longanizacontrol.mx.util.toDoubleOrZero
 
 class MainActivity : ComponentActivity() {
@@ -121,32 +122,104 @@ fun MainScreen(modifier: Modifier, meatInput: String, onMeatChange: (String) -> 
 
 @Composable
 fun RecipeScreen(modifier: Modifier, recipe: RecipeConfig, onChange: (RecipeConfig) -> Unit) {
+    var garlic by remember(recipe) { mutableStateOf(recipe.garlicGramsPerKg.toString()) }
+    var guajillo by remember(recipe) { mutableStateOf(recipe.guajilloGramsPerKg.toString()) }
+    var paprika by remember(recipe) { mutableStateOf(recipe.paprikaGramsPerKg.toString()) }
+    var spices by remember(recipe) { mutableStateOf(recipe.spicesGramsPerKg.toString()) }
+    var water by remember(recipe) { mutableStateOf(recipe.waterMlPerKg.toString()) }
+    var casingUnits by remember(recipe) { mutableStateOf(recipe.casingUnitsPerKg.toString()) }
+    var premixDose by remember(recipe) { mutableStateOf(recipe.premix.doseGramsPerKgMeat.toString()) }
+    var saltPercent by remember(recipe) { mutableStateOf(recipe.premix.saltPercent.toString()) }
+    var sugarPercent by remember(recipe) { mutableStateOf(recipe.premix.sugarPercent.toString()) }
+    var curingSaltPercent by remember(recipe) { mutableStateOf(recipe.premix.curingSaltPercent.toString()) }
+    var message by remember { mutableStateOf<String?>(null) }
+
     Column(modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field("Ajo g/kg", recipe.garlicGramsPerKg) { onChange(recipe.copy(garlicGramsPerKg = it)) }
-        Field("Guajillo g/kg", recipe.guajilloGramsPerKg) { onChange(recipe.copy(guajilloGramsPerKg = it)) }
-        Field("Pimentón g/kg", recipe.paprikaGramsPerKg) { onChange(recipe.copy(paprikaGramsPerKg = it)) }
-        Field("Especias g/kg", recipe.spicesGramsPerKg) { onChange(recipe.copy(spicesGramsPerKg = it)) }
-        Field("Agua ml/kg", recipe.waterMlPerKg) { onChange(recipe.copy(waterMlPerKg = it)) }
-        Field("Dosis premix g/kg", recipe.premix.doseGramsPerKgMeat) { onChange(recipe.copy(premix = recipe.premix.copy(doseGramsPerKgMeat = it))) }
-        Field("% Sal", recipe.premix.saltPercent) { onChange(recipe.copy(premix = recipe.premix.copy(saltPercent = it))) }
-        Field("% Azúcar", recipe.premix.sugarPercent) { onChange(recipe.copy(premix = recipe.premix.copy(sugarPercent = it))) }
-        Field("% Sal cura", recipe.premix.curingSaltPercent) { onChange(recipe.copy(premix = recipe.premix.copy(curingSaltPercent = it))) }
+        DecimalInputField(garlic, { garlic = it }, "Ajo g/kg", Modifier.fillMaxWidth())
+        DecimalInputField(guajillo, { guajillo = it }, "Guajillo g/kg", Modifier.fillMaxWidth())
+        DecimalInputField(paprika, { paprika = it }, "Pimentón g/kg", Modifier.fillMaxWidth())
+        DecimalInputField(spices, { spices = it }, "Especias g/kg", Modifier.fillMaxWidth())
+        DecimalInputField(water, { water = it }, "Agua ml/kg", Modifier.fillMaxWidth())
+        DecimalInputField(casingUnits, { casingUnits = it }, "Tripa pzas/kg", Modifier.fillMaxWidth())
+        DecimalInputField(premixDose, { premixDose = it }, "Dosis premix g/kg", Modifier.fillMaxWidth())
+        DecimalInputField(saltPercent, { saltPercent = it }, "% Sal", Modifier.fillMaxWidth())
+        DecimalInputField(sugarPercent, { sugarPercent = it }, "% Azúcar", Modifier.fillMaxWidth())
+        DecimalInputField(curingSaltPercent, { curingSaltPercent = it }, "% Sal cura", Modifier.fillMaxWidth())
+        Button(onClick = {
+            var updated = recipe
+            var skipped = false
+
+            parseDecimalOrNull(garlic)?.let { updated = updated.copy(garlicGramsPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(guajillo)?.let { updated = updated.copy(guajilloGramsPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(paprika)?.let { updated = updated.copy(paprikaGramsPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(spices)?.let { updated = updated.copy(spicesGramsPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(water)?.let { updated = updated.copy(waterMlPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(casingUnits)?.let { updated = updated.copy(casingUnitsPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(premixDose)?.let {
+                updated = updated.copy(premix = updated.premix.copy(doseGramsPerKgMeat = it))
+            } ?: run { skipped = true }
+            parseDecimalOrNull(saltPercent)?.let {
+                updated = updated.copy(premix = updated.premix.copy(saltPercent = it))
+            } ?: run { skipped = true }
+            parseDecimalOrNull(sugarPercent)?.let {
+                updated = updated.copy(premix = updated.premix.copy(sugarPercent = it))
+            } ?: run { skipped = true }
+            parseDecimalOrNull(curingSaltPercent)?.let {
+                updated = updated.copy(premix = updated.premix.copy(curingSaltPercent = it))
+            } ?: run { skipped = true }
+
+            onChange(updated)
+            message = if (skipped) "Algunos campos vacíos/inválidos se conservaron." else "Receta guardada."
+        }, modifier = Modifier.fillMaxWidth()) { Text("Guardar receta") }
+        message?.let { Text(it) }
     }
 }
 
 @Composable
 fun CostScreen(modifier: Modifier, prices: PriceConfig, onChange: (PriceConfig) -> Unit) {
+    var meat by remember(prices) { mutableStateOf(prices.meatPerKg.toString()) }
+    var salt by remember(prices) { mutableStateOf(prices.saltPerKg.toString()) }
+    var curingSalt by remember(prices) { mutableStateOf(prices.curingSaltPerKg.toString()) }
+    var sugar by remember(prices) { mutableStateOf(prices.sugarPerKg.toString()) }
+    var garlic by remember(prices) { mutableStateOf(prices.garlicPerKg.toString()) }
+    var guajillo by remember(prices) { mutableStateOf(prices.guajilloPerKg.toString()) }
+    var paprika by remember(prices) { mutableStateOf(prices.paprikaPerKg.toString()) }
+    var spices by remember(prices) { mutableStateOf(prices.spicesPerKg.toString()) }
+    var water by remember(prices) { mutableStateOf(prices.waterPerLiter.toString()) }
+    var casing by remember(prices) { mutableStateOf(prices.casingPerUnit.toString()) }
+    var sale by remember(prices) { mutableStateOf(prices.salePricePerKg.toString()) }
+    var message by remember { mutableStateOf<String?>(null) }
+
     Column(modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Field("Carne $/kg", prices.meatPerKg) { onChange(prices.copy(meatPerKg = it)) }
-        Field("Sal $/kg", prices.saltPerKg) { onChange(prices.copy(saltPerKg = it)) }
-        Field("Sal cura $/kg", prices.curingSaltPerKg) { onChange(prices.copy(curingSaltPerKg = it)) }
-        Field("Azúcar $/kg", prices.sugarPerKg) { onChange(prices.copy(sugarPerKg = it)) }
-        Field("Ajo $/kg", prices.garlicPerKg) { onChange(prices.copy(garlicPerKg = it)) }
-        Field("Guajillo $/kg", prices.guajilloPerKg) { onChange(prices.copy(guajilloPerKg = it)) }
-        Field("Pimentón $/kg", prices.paprikaPerKg) { onChange(prices.copy(paprikaPerKg = it)) }
-        Field("Especias $/kg", prices.spicesPerKg) { onChange(prices.copy(spicesPerKg = it)) }
-        Field("Agua $/L", prices.waterPerLiter) { onChange(prices.copy(waterPerLiter = it)) }
-        Field("Venta sugerida $/kg", prices.salePricePerKg) { onChange(prices.copy(salePricePerKg = it)) }
+        DecimalInputField(meat, { meat = it }, "Carne $/kg", Modifier.fillMaxWidth())
+        DecimalInputField(salt, { salt = it }, "Sal $/kg", Modifier.fillMaxWidth())
+        DecimalInputField(curingSalt, { curingSalt = it }, "Sal cura $/kg", Modifier.fillMaxWidth())
+        DecimalInputField(sugar, { sugar = it }, "Azúcar $/kg", Modifier.fillMaxWidth())
+        DecimalInputField(garlic, { garlic = it }, "Ajo $/kg", Modifier.fillMaxWidth())
+        DecimalInputField(guajillo, { guajillo = it }, "Guajillo $/kg", Modifier.fillMaxWidth())
+        DecimalInputField(paprika, { paprika = it }, "Pimentón $/kg", Modifier.fillMaxWidth())
+        DecimalInputField(spices, { spices = it }, "Especias $/kg", Modifier.fillMaxWidth())
+        DecimalInputField(water, { water = it }, "Agua $/L", Modifier.fillMaxWidth())
+        DecimalInputField(casing, { casing = it }, "Tripa $/pza", Modifier.fillMaxWidth())
+        DecimalInputField(sale, { sale = it }, "Venta sugerida $/kg", Modifier.fillMaxWidth())
+        Button(onClick = {
+            var updated = prices
+            var skipped = false
+            parseDecimalOrNull(meat)?.let { updated = updated.copy(meatPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(salt)?.let { updated = updated.copy(saltPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(curingSalt)?.let { updated = updated.copy(curingSaltPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(sugar)?.let { updated = updated.copy(sugarPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(garlic)?.let { updated = updated.copy(garlicPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(guajillo)?.let { updated = updated.copy(guajilloPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(paprika)?.let { updated = updated.copy(paprikaPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(spices)?.let { updated = updated.copy(spicesPerKg = it) } ?: run { skipped = true }
+            parseDecimalOrNull(water)?.let { updated = updated.copy(waterPerLiter = it) } ?: run { skipped = true }
+            parseDecimalOrNull(casing)?.let { updated = updated.copy(casingPerUnit = it) } ?: run { skipped = true }
+            parseDecimalOrNull(sale)?.let { updated = updated.copy(salePricePerKg = it) } ?: run { skipped = true }
+            onChange(updated)
+            message = if (skipped) "Algunos campos vacíos/inválidos se conservaron." else "Costos guardados."
+        }, modifier = Modifier.fillMaxWidth()) { Text("Guardar costos") }
+        message?.let { Text(it) }
     }
 }
 
@@ -180,10 +253,4 @@ fun HistoryScreen(modifier: Modifier, history: List<BatchRecord>) {
             } }
         }
     }
-}
-
-@Composable
-fun Field(label: String, modelValue: Double, onChange: (Double) -> Unit) {
-    var text by remember(modelValue) { mutableStateOf(modelValue.toString()) }
-    DecimalInputField(text, { text = it; onChange(toDoubleOrZero(it)) }, label, Modifier.fillMaxWidth())
 }
